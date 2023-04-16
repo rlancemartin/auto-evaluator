@@ -20,9 +20,10 @@ from langchain.evaluation.qa import QAEvalChain
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.retrievers.llama_index import LlamaIndexRetriever
-from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST
+from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST, GRADE_ANSWER_PROMPT_FAST
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
 
+# Keep dataframe in memory to accumulate experimal results
 if "existing_df" not in st.session_state:
     summary = pd.DataFrame(columns=['chunk_chars',
                                     'overlap',
@@ -37,14 +38,12 @@ if "existing_df" not in st.session_state:
 else:
     summary = st.session_state.existing_df
 
-
 @st.cache_data
 def load_docs(files):
 
     # Load docs
     # IN: List of upload files (from Streamlit)
     # OUT: str
-    # TODO: Support multple docs, Use Langchain loader
 
     st.info("`Reading doc ...`")
     all_text = ""
@@ -63,7 +62,6 @@ def load_docs(files):
             all_text += text
         else:
             st.warning('Please provide txt or pdf.', icon="⚠️")
-
     return all_text
 
 
@@ -72,10 +70,9 @@ def generate_eval(text, N, chunk):
 
     # Generate N questions from context of chunk chars
     # IN: text, N questions, chunk size to draw question from in the doc
-    # OUT: list of JSON
-    # TODO: Refactor, PR for Langchain repo, add error handling for JSON load in QA chain
+    # OUT: eval set as JSON list
 
-    st.info("`Generating eval set ... I will generate question / answer pairs from the input text. If you want to grade specific question - answer pairs, just input a JSON above`")
+    st.info("`Generating eval set ...`")
     n = len(text)
     starting_indices = [random.randint(0, n-chunk) for _ in range(N)]
     sub_sequences = [text[i:i+chunk] for i in starting_indices]
@@ -94,12 +91,11 @@ def generate_eval(text, N, chunk):
 @st.cache_resource
 def split_texts(text, chunk_size, overlap, split_method):
 
-    # Split text
-    # IN: text, chunk size, overlap
+    # Split texts
+    # IN: text, chunk size, overlap, split_method
     # OUT: list of str splits
-    # TODO: Add parameter for splitter type
 
-    st.info("`Splitting and embedding doc ...`")
+    st.info("`Splitting doc ...`")
     if split_method == "RecursiveTextSplitter":
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size,
                                                        chunk_overlap=overlap)
@@ -114,10 +110,11 @@ def split_texts(text, chunk_size, overlap, split_method):
 @st.cache_resource
 def make_retriever(splits, retriever_type, embeddings, num_neighbors):
 
-    # Make retriever
-    # IN: list of str splits, retriever type, and embedding type
+    # Make document retriever
+    # IN: list of str splits, retriever type, embedding type, number of neighbors for retrieval
     # OUT: retriever
 
+    st.info("`Making retriever ...`")
     # Set embeddings
     if embeddings == "OpenAI":
         embd = OpenAIEmbeddings()
@@ -136,21 +133,17 @@ def make_retriever(splits, retriever_type, embeddings, num_neighbors):
         retriever = SVMRetriever.from_texts(splits,embd)
     elif retriever_type == "TF-IDF":
         retriever = TFIDFRetriever.from_texts(splits)
-    #elif retriever_type == "LlamaIndex":
-    #    retriever = LlamaIndexRetriever.from_texts(splits)
     return retriever
 
 
 def make_chain(model_version, retriever):
 
     # Make chain
-    # IN: model version, vectorstore
+    # IN: model version, retriever
     # OUT: chain
-    # TODO: Support for multiple model types
 
     if (model_version == "gpt-3.5-turbo") or (model_version == "gpt-4"):
         llm = ChatOpenAI(model_name=model_version, temperature=0)
-    
     elif model_version == "anthropic":
         llm = Anthropic(temperature=0)
     qa = RetrievalQA.from_chain_type(llm,
@@ -160,16 +153,20 @@ def make_chain(model_version, retriever):
     return qa
 
 
-def grade_model_answer(predicted_dataset, predictions):
+def grade_model_answer(predicted_dataset, predictions, grade_answer_prompt):
 
-    # Grade the model
-    # IN: model predictions and ground truth (lists)
+    # Grade the distilled answer
+    # IN: ground truth, model predictions
     # OUT: list of scores
-    # TODO: Support for multiple grading types
 
     st.info("`Grading model answer ...`")
+    if grade_answer_prompt == "Fast":
+        prompt = GRADE_ANSWER_PROMPT_FAST
+    else:
+        prompt = GRADE_ANSWER_PROMPT
+
     eval_chain = QAEvalChain.from_llm(llm=ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0), 
-                                      prompt=GRADE_ANSWER_PROMPT)
+                                      prompt=prompt)
     graded_outputs = eval_chain.evaluate(predicted_dataset,
                                          predictions,
                                          question_key="question",
@@ -179,7 +176,7 @@ def grade_model_answer(predicted_dataset, predictions):
 def grade_model_retrieval(gt_dataset, predictions, grade_docs_prompt):
     
     # Grade the docs retrieval
-    # IN: model predictions and ground truth (lists)
+    # IN: ground truth, model predictions
     # OUT: list of scores
 
     st.info("`Grading relevance of retrived docs ...`")
@@ -196,12 +193,11 @@ def grade_model_retrieval(gt_dataset, predictions, grade_docs_prompt):
                                          prediction_key="result")
     return graded_outputs
 
-def run_eval(chain, retriever, eval_set, grade_docs_prompt):
+def run_eval(chain, retriever, eval_set, grade_prompt):
 
     # Compute eval
-    # IN: chain and ground truth (lists)
-    # OUT: list of scores, latenct, predictions
-    # TODO: Support for multiple grading types
+    # IN: chain, retriever, eval set, flag for docs retrieval prompt
+    # OUT: list of scores for answers and retrival, latency, predictions
 
     st.info("`Running eval ...`")
     predictions = []
@@ -230,8 +226,8 @@ def run_eval(chain, retriever, eval_set, grade_docs_prompt):
         retrived_docs.append(retrived)
         
     # Grade
-    graded_answers = grade_model_answer(gt_dataset, predictions)
-    graded_retrieval = grade_model_retrieval(gt_dataset, retrived_docs, grade_docs_prompt)
+    graded_answers = grade_model_answer(gt_dataset, predictions, grade_prompt)
+    graded_retrieval = grade_model_retrieval(gt_dataset, retrived_docs, grade_prompt)
     return graded_answers, graded_retrieval, latency, predictions
 
 # Auth
@@ -262,7 +258,6 @@ with st.sidebar.form("user_input"):
     retriever_type = st.radio("`Choose retriever`",
                                     ("TF-IDF",
                                     "SVM",
-    #                                  "LlamaIndex",
                                     "similarity-search"),
                                     index=2)
 
@@ -274,7 +269,7 @@ with st.sidebar.form("user_input"):
                                 "OpenAI"),
                                 index=1)
 
-    grade_docs_prompt = st.radio("`Grade docs prompt`",
+    grade_prompt = st.radio("`Gradeing style prompt`",
                                         ("Fast",
                                         "Descriptive"),
                                         index=0)
@@ -284,7 +279,6 @@ with st.sidebar.form("user_input"):
 # App
 st.header("`Auto-evaluator`")
 st.info("`I am an evaluation tool for question-answering. Given documents, I will auto-generate a question-answer eval set and evaluate using the selected chain settings. Experiments with different configurations are logged. Optionally, provide your own eval set.`")
-
 
 with st.form(key='file_inputs'):
     uploaded_file = st.file_uploader("`Please upload a file to evaluate (.txt or .pdf):` ",
@@ -313,7 +307,7 @@ if uploaded_file:
     # Make chain
     qa_chain = make_chain(model, retriever)
     # Grade model
-    graded_answers, graded_retrieval, latency, predictions = run_eval(qa_chain, retriever, eval_set, grade_docs_prompt)
+    graded_answers, graded_retrieval, latency, predictions = run_eval(qa_chain, retriever, eval_set, grade_prompt)
     
     # Assemble ouputs
     d = pd.DataFrame(predictions)
@@ -323,7 +317,7 @@ if uploaded_file:
 
     # Summary statistics
     mean_latency = d['latency'].mean()
-    correct_answer_count = len([text for text in d['answer score'] if text == "CORRECT"])
+    correct_answer_count = len([text for text in d['answer score'] if "INCORRECT" not in text])
     correct_docs_count = len([text for text in d['docs score'] if "Context is relevant: True" in text])
     percentage_answer = (correct_answer_count / len(graded_answers)) * 100
     percentage_docs = (correct_docs_count / len(graded_retrieval)) * 100
