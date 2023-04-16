@@ -1,15 +1,45 @@
-# `Auto-evaluator`
+# `Auto-evaluator` :brain: :memo:
 
 This is a lightweight evaluation tool for question-answering using Langchain to:
 
-* Auto-generate an eval set given a doc (or set of docs); optionally, you can also supply your own eval set
-* Evaluate a QA chain with specified QA chain configurations (model, embeddings, retriver, etc)
-* The prompts used for evluation are specified in `text_utils` and can be easily tuned / engineered
-* Test different configurations and log results from each experiments 
+- Ask the user to input a set of documents of interest
+
+- Use an LLM (`GPT-3.5-turbo`) to auto-generate `question``answer` pairs from these docs
+
+- Generate a question-answering chain with a specified set of UI-chosen configurations
+
+- Use the chain to generate a response to each `question`
+
+- Use an LLM (`GPT-3.5-turbo`) to score the response relative to the `answer`
+
+- Explore scoring across various chain configurations
 
 **Run as Streamlit app**
 
-Note: you will need an OpenAI API key with with access to `GPT-4` and an Anthropic API key to take advantage of all of the default dashboard model settings. However, additional models (e.g., from HuggingFace) can be easily added to the app.
-
 `pip install -r requirements.txt`
+
 `streamlit run auto-evaluator.py`
+
+**Inputs**
+
+`num_eval_questions` - Number of question to auto-generate (if the user does not supply an eval set)
+
+`split_method` - Method for text splitting
+
+`chunk_chars` - Chunk size for text splitting
+ 
+`overlap` - Chunk overlap for text splitting
+  
+`embeddings` - Embedding method for chunks
+ 
+`retriever_type` - Chunk retrival method
+
+`num_neighbors` - Neighbors in retrivial 
+
+`model` - LLM for summarization from retrived chunks 
+
+`grade_prompt` - Promp choice for grading
+
+**Disclaimer**
+
+```You will need an OpenAI API key with with access to `GPT-4` and an Anthropic API key to take advantage of all of the default dashboard model settings. However, additional models (e.g., from HuggingFace) can be easily added to the app.```
