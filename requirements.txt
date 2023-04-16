@@ -1,6 +1,6 @@
 pandas==1.4.3
 fastapi==0.85.2
-langchain==0.0.139
+langchain==0.0.141
 python-multipart==0.0.6
 uvicorn==0.18.3
 openai==0.27.0
@@ -14,3 +14,5 @@ filetype==1.2.0
 altair==4.2.2
 tokenizers==0.13.3
 sentence-transformers==2.2.2
+scikit-learn==1.2.1
+llama-index==0.4.35.post1

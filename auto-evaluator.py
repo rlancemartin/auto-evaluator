@@ -13,12 +13,13 @@ from langchain.llms import Anthropic
 from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
+from langchain.retrievers import SVMRetriever
 from langchain.chains import QAGenerationChain
-from langchain.evaluation.qa import QAEvalChain
 from langchain.retrievers import TFIDFRetriever
+from langchain.evaluation.qa import QAEvalChain
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.embeddings.openai import OpenAIEmbeddings
-from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT
+from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
 
 if "existing_df" not in st.session_state:
@@ -116,18 +117,24 @@ def make_retriever(splits, retriever_type, embeddings, num_neighbors):
     # IN: list of str splits, retriever type, and embedding type
     # OUT: retriever
 
+    # Set embeddings
+    if embeddings == "OpenAI":
+        embd = OpenAIEmbeddings()
+    elif embeddings == "HuggingFace":
+        embd = HuggingFaceEmbeddings()
+
+    # Select retriever
     if retriever_type == "similarity-search":
-        if embeddings == "OpenAI":
-            try:
-                vectorstore = FAISS.from_texts(splits, OpenAIEmbeddings())
-            except ValueError:
-                st.warning("`Error using OpenAI embeddings (disallowed TikToken token in the text). Using HuggingFace.`", icon="⚠️")
-                vectorstore = FAISS.from_texts(splits, HuggingFaceEmbeddings())
-        elif embeddings == "HuggingFace":
+        try:
+            vectorstore = FAISS.from_texts(splits, embd)
+        except ValueError:
+            st.warning("`Error using OpenAI embeddings (disallowed TikToken token in the text). Using HuggingFace.`", icon="⚠️")
             vectorstore = FAISS.from_texts(splits, HuggingFaceEmbeddings())
         retriever = vectorstore.as_retriever(k=num_neighbors)
+    elif retriever_type == "SVM":
+        retriever = SVMRetriever.from_texts(splits,embd)
     elif retriever_type == "TF-IDF":
-        retriever = TFIDFRetriever.from_texts(splits,k=num_neighbors)
+        retriever = TFIDFRetriever.from_texts(splits)
     return retriever
 
 
@@ -166,23 +173,27 @@ def grade_model_answer(predicted_dataset, predictions):
                                          prediction_key="result")
     return graded_outputs
 
-def grade_model_retrieval(gt_dataset, predictions):
+def grade_model_retrieval(gt_dataset, predictions, grade_docs_prompt):
     
     # Grade the docs retrieval
     # IN: model predictions and ground truth (lists)
     # OUT: list of scores
-    # TODO: Support for multiple grading types
 
     st.info("`Grading relevance of retrived docs ...`")
+    if grade_docs_prompt == "Fast":
+        prompt = GRADE_DOCS_PROMPT_FAST
+    else:
+        prompt = GRADE_DOCS_PROMPT
+
     eval_chain = QAEvalChain.from_llm(llm=ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0), 
-                                      prompt=GRADE_DOCS_PROMPT)
+                                      prompt=prompt)
     graded_outputs = eval_chain.evaluate(gt_dataset,
                                          predictions,
                                          question_key="question",
                                          prediction_key="result")
     return graded_outputs
 
-def run_eval(chain, retriever, eval_set):
+def run_eval(chain, retriever, eval_set, grade_docs_prompt):
 
     # Compute eval
     # IN: chain and ground truth (lists)
@@ -217,7 +228,7 @@ def run_eval(chain, retriever, eval_set):
         
     # Grade
     graded_answers = grade_model_answer(gt_dataset, predictions)
-    graded_retrieval = grade_model_retrieval(gt_dataset, retrived_docs)
+    graded_retrieval = grade_model_retrieval(gt_dataset, retrived_docs, grade_docs_prompt)
     return graded_answers, graded_retrieval, latency, predictions
 
 # Auth
@@ -245,8 +256,9 @@ model = st.sidebar.radio("`Choose model`",
 
 retriever_type = st.sidebar.radio("`Choose retriever`",
                                  ("TF-IDF",
+                                  "SVM",
                                   "similarity-search"),
-                                 index=1)
+                                 index=2)
 
 num_neighbors = st.sidebar.select_slider("`Choose # chunks to retrieve`",
                                  options=[3, 4, 5, 6, 7, 8])
@@ -255,6 +267,11 @@ embeddings = st.sidebar.radio("`Choose embeddings`",
                               ("HuggingFace",
                                "OpenAI"),
                               index=1)
+
+grade_docs_prompt = st.sidebar.radio("`Grade docs prompt`",
+                                     ("Fast",
+                                     "Descriptive"),
+                                     index=0)
 
 # App
 st.header("`Auto-evaluator`")
@@ -283,7 +300,7 @@ if uploaded_file:
     # Make chain
     qa_chain = make_chain(model, retriever)
     # Grade model
-    graded_answers, graded_retrieval, latency, predictions = run_eval(qa_chain, retriever, eval_set)
+    graded_answers, graded_retrieval, latency, predictions = run_eval(qa_chain, retriever, eval_set, grade_docs_prompt)
     
     # Assemble ouputs
     d = pd.DataFrame(predictions)
@@ -294,7 +311,7 @@ if uploaded_file:
     # Summary statistics
     mean_latency = d['latency'].mean()
     correct_answer_count = len([text for text in d['answer score'] if text == "CORRECT"])
-    correct_docs_count = len([text for text in d['docs score'] if "Context is relevant: True." in text])
+    correct_docs_count = len([text for text in d['docs score'] if "Context is relevant: True" in text])
     percentage_answer = (correct_answer_count / len(graded_answers)) * 100
     percentage_docs = (correct_docs_count / len(graded_retrieval)) * 100
     
@@ -324,6 +341,6 @@ if uploaded_file:
     show['expt number'] = show['expt number'].apply(
         lambda x: "Expt #: " + str(x+1))
     show['mean score'] = (show['retrival score'] + show['answer score']) / 2
-    c = alt.Chart(show).mark_circle().encode(x='mean score', y='latency',
+    c = alt.Chart(show).mark_circle(size=100).encode(x='mean score', y='latency',
                                              color='expt number', tooltip=['expt number', 'mean score', 'latency'])
     st.altair_chart(c, use_container_width=True, theme="streamlit")

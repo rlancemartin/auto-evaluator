@@ -1,16 +1,12 @@
 [
-{"question": "What is the transformer architecture in deep learning?",
-  "answer": "The transformer architecture is a neural network architecture that is general purpose and can process different sensory modalities like vision, audio, text, and video. It is simultaneously expressive in the forward pass, optimizable via backpropagation, gradient descent, and efficient high parallelism compute graph."},
- {"question": "What is a transformer and how is it designed?",
-  "answer": "A transformer is a series of blocks with attention and a multilayer perceptron. It is designed to be very expressive in a forward pass, optimizable in a backward pass, and efficient in hardware. The residual connections support the ability to learn short algorithms fast and first, and then gradually extend them longer during training."},
- {"question": "What is a transformer architecture and why is it important?",
-  "answer": "A transformer architecture is a type of neural network that is remarkably resilient and can simultaneously optimize for lots of properties of a desirable neural network architecture. It is important because it is a big step in AI and has proven to be extremely powerful and can solve arbitrary problems."},
- {"question": "What is a language model and how does it work?",
-  "answer": "A language model is a system that predicts the next word in a sequence of words. It can be done using count-based models like Ngram models or neural networks like transformers. The objective is simple, but to predict the next word accurately, the model needs to understand the context of the text, which requires a lot of knowledge about the world."},
- {"question": "What is the author's opinion on the transition to software 2.0?",
-  "answer": "The author believes that neural nets are taking over software and that the way we program computers is going to change. The author thinks that at some point, there's going to be a compilation process from the data sets and the objective and the architecture specification into the binary, which is really just the neural net weights and the forward pass of the neural net."},
+{"question": "Why is the transformer architecture expressive in the forward pass?",
+  "answer": "The transformer architecture is expressive because it uses a general message passing scheme where nodes get to look at each other, decide what's interesting and then update each other."},
+ {"question": "What design criteria does the Transformer meet?",
+  "answer": "The transformer is very expressive in a forward pass, optimizable in the backward pass using the techniques that we have such as gradient descent, and it can run efficiently on our hardware such as GPUs."},
+  {"question": "Why is next word prediction an effective training objective?",
+  "answer": "On a sufficiently large dataset, the task of predicting the next word multi-tasks knowledge of a lot of things, including understanding of chemistry, physics, and human nature. You have to understand a lot about the world to make that prediction on an internet-scale dataset."},
+  {"question": "What was the World Of Bits project and why did it fail?",
+  "answer": "World Of Bits was an effort to give AI access to tools, such as a keyboard and mouse, in order to complete tasks, such as complete bookings. It failed because it turned out that reinforcement learning is an extremely inefficient way of training neural networks. You take many actions, but you only get a sparse reward once in a while. Starting from scratch, it is very unlikely to stumble on the correct action - such as a booking - by chance at random, so the reward signal is very sparse."},
  {"question": "What is the task of programming in software 2.0?",
-  "answer": "The task of programming in software 2.0 is changing the data set and loss functions of the neural net, as well as specifying the architecture of the neural net."},
- {"question": "What are the three properties of a good dataset for supervised learning?",
-  "answer": "The three properties of a good dataset for supervised learning are that it needs to be large, accurate, and diverse."}
+  "answer": "The task of programming in software 2.0 is specifying data sets, the objective or loss function, and the neural network architecture specification. These are then compiled into a neural network binary, which is basically the neural net weights and the forward pass of the neural net."}
 ]

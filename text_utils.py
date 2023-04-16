@@ -14,7 +14,8 @@ def remove_citations(text: str) -> str:
     text = re.sub(r'\[[0-9,-]+(,\s[0-9,-]+)*\]', '', text)
     return text
 
-template = """You are a teacher grading a quiz. You are given a question, the student's answer, and the true answer, and are asked to score the student answer as either CORRECT or INCORRECT.
+template = """You are a teacher grading a quiz. 
+You are given a question, the student's answer, and the true answer, and are asked to score the student answer as either CORRECT or INCORRECT.
 
 Example Format:
 QUESTION: question here
@@ -41,3 +42,13 @@ template = """
     And explain why it supports or does not support the correct answer: {answer}"""
 
 GRADE_DOCS_PROMPT = PromptTemplate(input_variables=["query", "result", "answer"], template=template)
+
+template = """ 
+    Given the question: \n
+    {query}
+    Decide if the following retreived context is relevant to the {answer}: \n
+    {result}
+    Answer in the following format: \n
+    "Context is relevant: True or False." \n """
+
+GRADE_DOCS_PROMPT_FAST = PromptTemplate(input_variables=["query", "result", "answer"], template=template)
