@@ -19,6 +19,7 @@ from langchain.retrievers import TFIDFRetriever
 from langchain.evaluation.qa import QAEvalChain
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.retrievers.llama_index import LlamaIndexRetriever
 from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
 
@@ -135,6 +136,8 @@ def make_retriever(splits, retriever_type, embeddings, num_neighbors):
         retriever = SVMRetriever.from_texts(splits,embd)
     elif retriever_type == "TF-IDF":
         retriever = TFIDFRetriever.from_texts(splits)
+    #elif retriever_type == "LlamaIndex":
+    #    retriever = LlamaIndexRetriever.from_texts(splits)
     return retriever
 
 
@@ -234,55 +237,65 @@ def run_eval(chain, retriever, eval_set, grade_docs_prompt):
 # Auth
 st.sidebar.image("img/diagnostic.jpg")
 
-num_eval_questions = st.sidebar.select_slider("`Number of eval questions`",
-                                      options=[1, 5, 10, 15, 20], value=5)
+with st.sidebar.form("user_input"):
 
-chunk_chars = st.sidebar.select_slider("`Choose chunk size for splitting`",
-                               options=[500, 750, 1000, 1500, 2000], value=1000)
+    num_eval_questions = st.select_slider("`Number of eval questions`",
+                                        options=[1, 5, 10, 15, 20], value=5)
 
-overlap = st.sidebar.select_slider("`Choose overlap for splitting`",
-                           options=[0, 50, 100, 150, 200], value=100)
+    chunk_chars = st.select_slider("`Choose chunk size for splitting`",
+                                options=[500, 750, 1000, 1500, 2000], value=1000)
 
-split_method = st.sidebar.radio("`Split method`",
-                                ("RecursiveTextSplitter",
-                                 "CharacterTextSplitter"),
-                                index=0)
+    overlap = st.select_slider("`Choose overlap for splitting`",
+                            options=[0, 50, 100, 150, 200], value=100)
 
-model = st.sidebar.radio("`Choose model`",
-                         ("gpt-3.5-turbo",
-                          "gpt-4",
-                          "anthropic"),
-                         index=0)
+    split_method = st.radio("`Split method`",
+                                    ("RecursiveTextSplitter",
+                                    "CharacterTextSplitter"),
+                                    index=0)
 
-retriever_type = st.sidebar.radio("`Choose retriever`",
-                                 ("TF-IDF",
-                                  "SVM",
-                                  "similarity-search"),
-                                 index=2)
+    model = st.radio("`Choose model`",
+                            ("gpt-3.5-turbo",
+                            "gpt-4",
+                            "anthropic"),
+                            index=0)
 
-num_neighbors = st.sidebar.select_slider("`Choose # chunks to retrieve`",
-                                 options=[3, 4, 5, 6, 7, 8])
+    retriever_type = st.radio("`Choose retriever`",
+                                    ("TF-IDF",
+                                    "SVM",
+    #                                  "LlamaIndex",
+                                    "similarity-search"),
+                                    index=2)
 
-embeddings = st.sidebar.radio("`Choose embeddings`",
-                              ("HuggingFace",
-                               "OpenAI"),
-                              index=1)
+    num_neighbors = st.select_slider("`Choose # chunks to retrieve`",
+                                    options=[3, 4, 5, 6, 7, 8])
 
-grade_docs_prompt = st.sidebar.radio("`Grade docs prompt`",
-                                     ("Fast",
-                                     "Descriptive"),
-                                     index=0)
+    embeddings = st.radio("`Choose embeddings`",
+                                ("HuggingFace",
+                                "OpenAI"),
+                                index=1)
+
+    grade_docs_prompt = st.radio("`Grade docs prompt`",
+                                        ("Fast",
+                                        "Descriptive"),
+                                        index=0)
+    
+    submitted = st.form_submit_button("Submit evaluation")
 
 # App
 st.header("`Auto-evaluator`")
 st.info("`I am an evaluation tool for question-answering. Given documents, I will auto-generate a question-answer eval set and evaluate using the selected chain settings. Experiments with different configurations are logged. Optionally, provide your own eval set.`")
-uploaded_eval_set = st.file_uploader("`[Optional] Please upload eval set (JSON):` ",
-                                     type=['json'],
-                                     accept_multiple_files=False)
 
-uploaded_file = st.file_uploader("`Please upload a file to evaluate (.txt or .pdf):` ",
-                                 type=['pdf', 'txt'],
-                                 accept_multiple_files=True)
+
+with st.form(key='file_inputs'):
+    uploaded_file = st.file_uploader("`Please upload a file to evaluate (.txt or .pdf):` ",
+                                    type=['pdf', 'txt'],
+                                    accept_multiple_files=True)
+
+    uploaded_eval_set = st.file_uploader("`[Optional] Please upload eval set (JSON):` ",
+                                        type=['json'],
+                                        accept_multiple_files=False)
+    
+    submitted = st.form_submit_button("Submit files")
 
 if uploaded_file:
 
