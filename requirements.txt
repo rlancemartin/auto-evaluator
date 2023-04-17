@@ -16,4 +16,4 @@ tokenizers==0.13.3
 sentence-transformers==2.2.2
 scikit-learn==1.2.1
 llama-index==0.4.35.post1
-streamlit==1.18.1
+streamlit==1.21.0
