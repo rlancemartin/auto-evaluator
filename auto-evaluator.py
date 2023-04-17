@@ -9,9 +9,10 @@ import pandas as pd
 import altair as alt
 import streamlit as st
 from io import StringIO
+from llama_index import Document
 from langchain.llms import Anthropic
-from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
+from langchain.vectorstores import FAISS
 from langchain.chat_models import ChatOpenAI
 from langchain.retrievers import SVMRetriever
 from langchain.chains import QAGenerationChain
@@ -19,9 +20,9 @@ from langchain.retrievers import TFIDFRetriever
 from langchain.evaluation.qa import QAEvalChain
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.retrievers.llama_index import LlamaIndexRetriever
-from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST, GRADE_ANSWER_PROMPT_FAST
+from gpt_index import GPTSimpleVectorIndex, LLMPredictor, ServiceContext
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
+from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST, GRADE_ANSWER_PROMPT_FAST
 
 # Keep dataframe in memory to accumulate experimal results
 if "existing_df" not in st.session_state:
@@ -31,6 +32,7 @@ if "existing_df" not in st.session_state:
                                     'model',
                                     'retriever',
                                     'embedding',
+                                    'num_neighbors',
                                     'latency',
                                     'retrival score',
                                     'answer score'])
@@ -106,9 +108,21 @@ def split_texts(text, chunk_size, overlap, split_method):
     splits = text_splitter.split_text(text)
     return splits
 
+@st.cache_resource
+def make_llm(model_version):
+
+    # Make LLM
+    # IN: version
+    # OUT: llm
+
+    if (model_version == "gpt-3.5-turbo") or (model_version == "gpt-4"):
+        llm = ChatOpenAI(model_name=model_version, temperature=0)
+    elif model_version == "anthropic":
+        llm = Anthropic(temperature=0)
+    return llm
 
 @st.cache_resource
-def make_retriever(splits, retriever_type, embeddings, num_neighbors):
+def make_retriever(splits, retriever_type, embeddings, num_neighbors, _llm):
 
     # Make document retriever
     # IN: list of str splits, retriever type, embedding type, number of neighbors for retrieval
@@ -133,23 +147,27 @@ def make_retriever(splits, retriever_type, embeddings, num_neighbors):
         retriever = SVMRetriever.from_texts(splits,embd)
     elif retriever_type == "TF-IDF":
         retriever = TFIDFRetriever.from_texts(splits)
+    elif retriever_type == "Llama-Index":
+        documents = [Document(t) for t in splits]
+        llm_predictor = LLMPredictor(llm)
+        context = ServiceContext.from_defaults(chunk_size_limit=512,llm_predictor=llm_predictor)
+        retriever = GPTSimpleVectorIndex.from_documents(documents, service_context=context)
     return retriever
 
 
-def make_chain(model_version, retriever):
+def make_chain(llm, retriever, retriever_type):
 
     # Make chain
     # IN: model version, retriever
-    # OUT: chain
+    # OUT: chain (or return retriever for Llama-Index
 
-    if (model_version == "gpt-3.5-turbo") or (model_version == "gpt-4"):
-        llm = ChatOpenAI(model_name=model_version, temperature=0)
-    elif model_version == "anthropic":
-        llm = Anthropic(temperature=0)
-    qa = RetrievalQA.from_chain_type(llm,
-                                     chain_type="stuff",
-                                     retriever=retriever,
-                                     input_key="question")
+    if retriever_type != "Llama-Index":
+        qa = RetrievalQA.from_chain_type(llm,
+                                        chain_type="stuff",
+                                        retriever=retriever,
+                                        input_key="question")
+    elif retriever_type == "Llama-Index":
+        qa = retriever
     return qa
 
 
@@ -193,7 +211,7 @@ def grade_model_retrieval(gt_dataset, predictions, grade_docs_prompt):
                                          prediction_key="result")
     return graded_outputs
 
-def run_eval(chain, retriever, eval_set, grade_prompt):
+def run_eval(chain, retriever, eval_set, grade_prompt, retriever_type, num_neighbors):
 
     # Compute eval
     # IN: chain, retriever, eval set, flag for docs retrieval prompt
@@ -209,19 +227,26 @@ def run_eval(chain, retriever, eval_set, grade_prompt):
         
         # Get answer and log latency
         start_time = time.time()
-        predictions.append(chain(data))
+        if retriever_type != "Llama-Index":
+            predictions.append(chain(data))
+        elif retriever_type == "Llama-Index":
+            answer = chain.query(data["question"],similarity_top_k=num_neighbors)
+            predictions.append({"question": data["question"], "answer": data["answer"],"result": answer.response})
         gt_dataset.append(data)
         end_time = time.time()
         elapsed_time = end_time - start_time
         latency.append(elapsed_time)
         
-        # Retrive data
-        docs=retriever.get_relevant_documents(data["question"])
-        
-        # Extract text from retrived docs
+        # Retrive docs
         retrived_doc_text = ""
-        for i,doc in enumerate(docs):
-            retrived_doc_text += "Doc %s: "%str(i+1) + doc.page_content + " "
+        if retriever_type != "Llama-Index":
+            docs=retriever.get_relevant_documents(data["question"])
+            for i,doc in enumerate(docs):
+                retrived_doc_text += "Doc %s: "%str(i+1) + doc.page_content + " "
+        elif retriever_type == "Llama-Index":
+            for i, doc in enumerate(answer.source_nodes):
+                retrived_doc_text += "Doc %s: "%str(i+1) + doc.node.text + " "
+                    
         retrived = {"question": data["question"],"answer": data["answer"], "result": retrived_doc_text}
         retrived_docs.append(retrived)
         
@@ -258,8 +283,9 @@ with st.sidebar.form("user_input"):
     retriever_type = st.radio("`Choose retriever`",
                                     ("TF-IDF",
                                     "SVM",
+                                    "Llama-Index",
                                     "similarity-search"),
-                                    index=2)
+                                    index=3)
 
     num_neighbors = st.select_slider("`Choose # chunks to retrieve`",
                                     options=[3, 4, 5, 6, 7, 8])
@@ -302,12 +328,14 @@ if uploaded_file:
         eval_set = json.loads(uploaded_eval_set.read())
     # Split text
     splits = split_texts(text, chunk_chars, overlap, split_method)
+    # Make LLM
+    llm = make_llm(model)
     # Make vector DB
-    retriever = make_retriever(splits, retriever_type, embeddings, num_neighbors)
+    retriever = make_retriever(splits, retriever_type, embeddings, num_neighbors, llm)
     # Make chain
-    qa_chain = make_chain(model, retriever)
+    qa_chain = make_chain(llm, retriever, retriever_type)
     # Grade model
-    graded_answers, graded_retrieval, latency, predictions = run_eval(qa_chain, retriever, eval_set, grade_prompt)
+    graded_answers, graded_retrieval, latency, predictions = run_eval(qa_chain, retriever, eval_set, grade_prompt, retriever_type, num_neighbors)
     
     # Assemble ouputs
     d = pd.DataFrame(predictions)
@@ -334,6 +362,7 @@ if uploaded_file:
                             'model': [model],
                             'retriever': [retriever_type],
                             'embedding': [embeddings],
+                            'num_neighbors': [num_neighbors],
                             'latency': [mean_latency],
                             'retrival score': [percentage_docs],
                             'answer score': [percentage_answer]})
@@ -344,7 +373,7 @@ if uploaded_file:
     # Dataframe for visualization
     show = summary.reset_index().copy()
     show.columns = ['expt number', 'chunk_chars', 'overlap',
-                    'split', 'model', 'retriever', 'embedding', 'latency', 'retrival score','answer score']
+                    'split', 'model', 'retriever', 'embedding', 'num_neighbors','latency', 'retrival score','answer score']
     show['expt number'] = show['expt number'].apply(
         lambda x: "Expt #: " + str(x+1))
     show['mean score'] = (show['retrival score'] + show['answer score']) / 2
