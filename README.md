@@ -40,6 +40,14 @@ This is a lightweight evaluation tool for question-answering using Langchain to:
 
 `grade_prompt` - Promp choice for grading
 
+**Blog**
+
+https://blog.langchain.dev/auto-eval-of-question-answering-tasks/
+
+**UI**
+
+ ![ui](https://user-images.githubusercontent.com/122662504/232509494-3d1777f9-55f1-496b-b102-70543d2bb17f.jpeg)
+
 **Disclaimer**
 
 ```You will need an OpenAI API key with with access to `GPT-4` and an Anthropic API key to take advantage of all of the default dashboard model settings. However, additional models (e.g., from HuggingFace) can be easily added to the app.```
