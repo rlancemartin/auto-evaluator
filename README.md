@@ -50,4 +50,4 @@ https://blog.langchain.dev/auto-eval-of-question-answering-tasks/
 
 **Disclaimer**
 
-```You will need an OpenAI API key with with access to `GPT-4` and an Anthropic API key to take advantage of all of the default dashboard model settings. However, additional models (e.g., from HuggingFace) can be easily added to the app.```
+```You will need an OpenAI API key with with access to `GPT-4` and an Anthropic API key to take advantage of all of the default dashboard model settings. However, additional models (e.g., from Hugging Face) can be easily added to the app.```
