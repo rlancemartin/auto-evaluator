@@ -34,10 +34,10 @@ if "existing_df" not in st.session_state:
                                     'model',
                                     'retriever',
                                     'embedding',
-                                    'num_neighbors',
-                                    'latency',
-                                    'retrival score',
-                                    'answer score'])
+                                    'num_neighbors', 
+                                    'Latency',
+                                    'Retrieval score',
+                                    'Answer score'])
     st.session_state.existing_df = summary
 else:
     summary = st.session_state.existing_df
@@ -360,6 +360,7 @@ if uploaded_file:
     
     # Accumulate results
     st.subheader("`Aggregate Results`")
+    st.info("`Retrieval and answer scores are percentage of retrived documents deemed relevant by the LLM grader (relative to the question) and percentage of summarized answers deemed relevant (relative to ground truth answer), respectively. The size of point correponds to the latency (in seconds) of retrieval + answer summarization (larger circle = slower).`")
     new_row = pd.DataFrame({'chunk_chars': [chunk_chars],
                             'overlap': [overlap],
                             'split': [split_method],
@@ -367,9 +368,9 @@ if uploaded_file:
                             'retriever': [retriever_type],
                             'embedding': [embeddings],
                             'num_neighbors': [num_neighbors],
-                            'latency': [mean_latency],
-                            'retrival score': [percentage_docs],
-                            'answer score': [percentage_answer]})
+                            'Latency': [mean_latency],
+                            'Retrieval score': [percentage_docs],
+                            'Answer score': [percentage_answer]})
     summary = pd.concat([summary, new_row], ignore_index=True)
     st.dataframe(data=summary, use_container_width=True)
     st.session_state.existing_df = summary
@@ -377,10 +378,11 @@ if uploaded_file:
     # Dataframe for visualization
     show = summary.reset_index().copy()
     show.columns = ['expt number', 'chunk_chars', 'overlap',
-                    'split', 'model', 'retriever', 'embedding', 'num_neighbors','latency', 'retrival score','answer score']
-    show['expt number'] = show['expt number'].apply(
-        lambda x: "Expt #: " + str(x+1))
-    show['mean score'] = (show['retrival score'] + show['answer score']) / 2
-    c = alt.Chart(show).mark_circle(size=100).encode(x='mean score', y='latency',
-                                             color='expt number', tooltip=['expt number', 'mean score', 'latency'])
+                    'split', 'model', 'retriever', 'embedding', 'num_neighbors','Latency', 'Retrieval score','Answer score']
+    show['expt number'] = show['expt number'].apply(lambda x: "Expt #: " + str(x+1))
+    c = alt.Chart(show).mark_circle().encode(x='Retrieval score',
+                                                     y='Answer score',
+                                                     size=alt.Size('Latency'),
+                                                     color='expt number', 
+                                                     tooltip=['expt number', 'Retrieval score', 'Latency', 'Answer score'])
     st.altair_chart(c, use_container_width=True, theme="streamlit")
