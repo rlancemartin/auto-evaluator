@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import faiss
 import pypdf
 import random
 import itertools
@@ -13,6 +14,7 @@ from llama_index import Document
 from langchain.llms import Anthropic
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import FAISS
+from llama_index import LangchainEmbedding
 from langchain.chat_models import ChatOpenAI
 from langchain.retrievers import SVMRetriever
 from langchain.chains import QAGenerationChain
@@ -20,7 +22,7 @@ from langchain.retrievers import TFIDFRetriever
 from langchain.evaluation.qa import QAEvalChain
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.embeddings.openai import OpenAIEmbeddings
-from gpt_index import GPTSimpleVectorIndex, LLMPredictor, ServiceContext
+from gpt_index import LLMPredictor, ServiceContext, GPTFaissIndex
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
 from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST, GRADE_ANSWER_PROMPT_FAST
 
@@ -148,10 +150,12 @@ def make_retriever(splits, retriever_type, embeddings, num_neighbors, _llm):
     elif retriever_type == "TF-IDF":
         retriever = TFIDFRetriever.from_texts(splits)
     elif retriever_type == "Llama-Index":
-        documents = [Document(t) for t in splits]
+        documents = [Document(t, LangchainEmbedding(embd)) for t in splits]
         llm_predictor = LLMPredictor(llm)
         context = ServiceContext.from_defaults(chunk_size_limit=512,llm_predictor=llm_predictor)
-        retriever = GPTSimpleVectorIndex.from_documents(documents, service_context=context)
+        d = 1536
+        faiss_index = faiss.IndexFlatL2(d)
+        retriever = GPTFaissIndex.from_documents(documents, faiss_index=faiss_index, service_context=context)
     return retriever
 
 
@@ -230,7 +234,7 @@ def run_eval(chain, retriever, eval_set, grade_prompt, retriever_type, num_neigh
         if retriever_type != "Llama-Index":
             predictions.append(chain(data))
         elif retriever_type == "Llama-Index":
-            answer = chain.query(data["question"],similarity_top_k=num_neighbors)
+            answer = chain.query(data["question"],similarity_top_k=num_neighbors,response_mode="tree_summarize",use_async=True)
             predictions.append({"question": data["question"], "answer": data["answer"],"result": answer.response})
         gt_dataset.append(data)
         end_time = time.time()
