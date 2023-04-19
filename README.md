@@ -34,11 +34,11 @@ This is a lightweight evaluation tool for question-answering using Langchain to:
  
 `retriever_type` - Chunk retrival method
 
-`num_neighbors` - Neighbors in retrivial 
+`num_neighbors` - Neighbors for retrivial 
 
-`model` - LLM for summarization from retrived chunks 
+`model` - LLM for summarization of retrived chunks 
 
-`grade_prompt` - Promp choice for grading
+`grade_prompt` - Promp choice for model self-grading
 
 **Blog**
 
@@ -46,7 +46,7 @@ https://blog.langchain.dev/auto-eval-of-question-answering-tasks/
 
 **UI**
 
- ![ui](https://user-images.githubusercontent.com/122662504/232509494-3d1777f9-55f1-496b-b102-70543d2bb17f.jpeg)
+![image](https://user-images.githubusercontent.com/122662504/233218347-de10cf41-6230-47a7-aa9e-8ab01673b87a.png)
 
 **Disclaimer**
 
