@@ -56,7 +56,7 @@ GRADE_ANSWER_PROMPT_FAST = PromptTemplate(input_variables=["query", "result", "a
 template = """ 
     Given the question: \n
     {query}
-    Decide if the following retreived context is relevant: \n
+    Decide if the following retrieved context is relevant: \n
     {result}
     Answer in the following format: \n
     "Context is relevant: True or False." \n 
@@ -67,7 +67,7 @@ GRADE_DOCS_PROMPT = PromptTemplate(input_variables=["query", "result", "answer"]
 template = """ 
     Given the question: \n
     {query}
-    Decide if the following retreived context is relevant to the {answer}: \n
+    Decide if the following retrieved context is relevant to the {answer}: \n
     {result}
     Answer in the following format: \n
     "Context is relevant: True or False." \n """
