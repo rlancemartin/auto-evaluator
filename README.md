@@ -4,7 +4,7 @@ This is a lightweight evaluation tool for question-answering using Langchain to:
 
 - Ask the user to input a set of documents of interest
 
-- Use an LLM (`GPT-3.5-turbo`) to auto-generate `question``answer` pairs from these docs
+- Apply an LLM (`GPT-3.5-turbo`) to auto-generate `question`-`answer` pairs from these docs
 
 - Generate a question-answering chain with a specified set of UI-chosen configurations
 
@@ -22,7 +22,7 @@ This is a lightweight evaluation tool for question-answering using Langchain to:
 
 **Inputs**
 
-`num_eval_questions` - Number of question to auto-generate (if the user does not supply an eval set)
+`num_eval_questions` - Number of questions to auto-generate (if the user does not supply an eval set)
 
 `split_method` - Method for text splitting
 
@@ -32,13 +32,13 @@ This is a lightweight evaluation tool for question-answering using Langchain to:
   
 `embeddings` - Embedding method for chunks
  
-`retriever_type` - Chunk retrival method
+`retriever_type` - Chunk retrieval method
 
-`num_neighbors` - Neighbors for retrivial 
+`num_neighbors` - Neighbors for retrieval 
 
-`model` - LLM for summarization of retrived chunks 
+`model` - LLM for summarization of retrieved chunks 
 
-`grade_prompt` - Promp choice for model self-grading
+`grade_prompt` - Prompt choice for model self-grading
 
 **Blog**
 
@@ -50,4 +50,4 @@ https://blog.langchain.dev/auto-eval-of-question-answering-tasks/
 
 **Disclaimer**
 
-```You will need an OpenAI API key with with access to `GPT-4` and an Anthropic API key to take advantage of all of the default dashboard model settings. However, additional models (e.g., from Hugging Face) can be easily added to the app.```
+```You will need an OpenAI API key with access to `GPT-4` and an Anthropic API key to take advantage of all of the default dashboard model settings. However, additional models (e.g., from Hugging Face) can be easily added to the app.```
