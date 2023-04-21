@@ -25,7 +25,7 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.embeddings.openai import OpenAIEmbeddings
 from gpt_index import LLMPredictor, ServiceContext, GPTFaissIndex
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
-from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST, GRADE_ANSWER_PROMPT_FAST
+from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST, GRADE_ANSWER_PROMPT_FAST, GRADE_ANSWER_PROMPT_BIAS_CHECK
 
 # Keep dataframe in memory to accumulate experimental results
 if "existing_df" not in st.session_state:
@@ -218,7 +218,12 @@ def grade_model_answer(predicted_dataset: List, predictions: List, grade_answer_
     # Grade the distilled answer
     st.info("`Grading model answer ...`")
     # Set the grading prompt based on the grade_answer_prompt parameter
-    prompt = GRADE_ANSWER_PROMPT_FAST if grade_answer_prompt == "Fast" else GRADE_ANSWER_PROMPT
+    if grade_answer_prompt == "Fast":
+        prompt = GRADE_ANSWER_PROMPT_FAST
+    elif grade_answer_prompt == "Descriptive w/ bias check":
+        prompt = GRADE_ANSWER_PROMPT_BIAS_CHECK
+    else:
+        prompt = GRADE_ANSWER_PROMPT
 
     # Create an evaluation chain
     eval_chain = QAEvalChain.from_llm(
@@ -364,7 +369,8 @@ with st.sidebar.form("user_input"):
 
     grade_prompt = st.radio("`Grading style prompt`",
                             ("Fast",
-                             "Descriptive"),
+                             "Descriptive",
+                             "Descriptive w/ bias check"),
                             index=0)
 
     submitted = st.form_submit_button("Submit evaluation")
