@@ -7,6 +7,6 @@
   "answer": "On a sufficiently large dataset, the task of predicting the next word multi-tasks knowledge of a lot of things, including understanding of chemistry, physics, and human nature. You have to understand a lot about the world to make that prediction on an internet-scale dataset."},
   {"question": "What was the World Of Bits project and why did it fail?",
   "answer": "World Of Bits was an effort to give AI access to tools, such as a keyboard and mouse, in order to complete tasks, such as complete bookings. It failed because it turned out that reinforcement learning is an extremely inefficient way of training neural networks. You take many actions, but you only get a sparse reward once in a while. Starting from scratch, it is very unlikely to stumble on the correct action - such as a booking - by chance at random, so the reward signal is very sparse."},
- {"question": "What is the task of programming in software 2.0?",
-  "answer": "The task of programming in software 2.0 is specifying data sets, the objective or loss function, and the neural network architecture specification. These are then compiled into a neural network binary, which is basically the neural net weights and the forward pass of the neural net."}
+ {"question": "Why can additional sensors be a liability in an autonomous vehicle system?",
+  "answer": "Each sensor adds complexity to the system. The hardware must be sourced, versioned, and maintain firmware. Software must ingest it, track versions. The cost of this additional bloat or entropy must be weighted against the added benefit of that particular sensor."}
 ]

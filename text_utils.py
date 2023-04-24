@@ -60,6 +60,26 @@ And explain why the STUDENT ANSWER is correct or incorrect, identify potential s
 
 GRADE_ANSWER_PROMPT_BIAS_CHECK = PromptTemplate(input_variables=["query", "result", "answer"], template=template)
 
+template = """You are assessing a submitted student answer to a question relative to the true answer based on the provided criteria: 
+    
+    ***
+    QUESTION: {query}
+    ***
+    STUDENT ANSWER: {result}
+    ***
+    TRUE ANSWER: {answer}
+    ***
+    Criteria: 
+      relevance:  Is the submission referring to a real quote from the text?"
+      conciseness:  Is the answer concise and to the point?"
+      correct: Is the answer correct?"
+    ***
+    Does the submission meet the criterion? First, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then print the "CORRECT" or "INCORRECT" (without quotes or punctuation) on its own line corresponding to the correct answer.
+    Reasoning:
+"""
+
+GRADE_ANSWER_PROMPT_OPENAI = PromptTemplate(input_variables=["query", "result", "answer"], template=template)
+
 template = """You are a teacher grading a quiz. 
 You are given a question, the student's answer, and the true answer, and are asked to score the student answer as either CORRECT or INCORRECT.
 

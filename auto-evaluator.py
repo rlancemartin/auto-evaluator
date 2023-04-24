@@ -25,7 +25,7 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.embeddings.openai import OpenAIEmbeddings
 from gpt_index import LLMPredictor, ServiceContext, GPTFaissIndex
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
-from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST, GRADE_ANSWER_PROMPT_FAST, GRADE_ANSWER_PROMPT_BIAS_CHECK
+from text_utils import GRADE_DOCS_PROMPT, GRADE_ANSWER_PROMPT, GRADE_DOCS_PROMPT_FAST, GRADE_ANSWER_PROMPT_FAST, GRADE_ANSWER_PROMPT_BIAS_CHECK, GRADE_ANSWER_PROMPT_OPENAI
 
 # Keep dataframe in memory to accumulate experimental results
 if "existing_df" not in st.session_state:
@@ -222,6 +222,8 @@ def grade_model_answer(predicted_dataset: List, predictions: List, grade_answer_
         prompt = GRADE_ANSWER_PROMPT_FAST
     elif grade_answer_prompt == "Descriptive w/ bias check":
         prompt = GRADE_ANSWER_PROMPT_BIAS_CHECK
+    elif grade_answer_prompt == "OpenAI grading prompt":
+        prompt = GRADE_ANSWER_PROMPT_OPENAI
     else:
         prompt = GRADE_ANSWER_PROMPT
 
@@ -370,7 +372,8 @@ with st.sidebar.form("user_input"):
     grade_prompt = st.radio("`Grading style prompt`",
                             ("Fast",
                              "Descriptive",
-                             "Descriptive w/ bias check"),
+                             "Descriptive w/ bias check",
+                             "OpenAI grading prompt"),
                             index=0)
 
     submitted = st.form_submit_button("Submit evaluation")
@@ -380,14 +383,14 @@ st.header("`Auto-evaluator`")
 st.info(
     "`I am an evaluation tool for question-answering. Given documents, I will auto-generate a question-answer eval "
     "set and evaluate using the selected chain settings. Experiments with different configurations are logged. "
-    "Optionally, provide your own eval set.`")
+    "Optionally, provide your own eval set (as a JSON, see docs/karpathy-pod-eval.json for an example).`")
 
 with st.form(key='file_inputs'):
     uploaded_file = st.file_uploader("`Please upload a file to evaluate (.txt or .pdf):` ",
                                      type=['pdf', 'txt'],
                                      accept_multiple_files=True)
 
-    uploaded_eval_set = st.file_uploader("`[Optional] Please upload eval set (JSON):` ",
+    uploaded_eval_set = st.file_uploader("`[Optional] Please upload eval set (.json):` ",
                                          type=['json'],
                                          accept_multiple_files=False)
 
