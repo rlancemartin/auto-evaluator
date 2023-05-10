@@ -2,7 +2,9 @@
 
 > **Note**
 > See the HuggingFace space for this app: https://huggingface.co/spaces/rlancemartin/auto-evaluator
+
 > See the free-to-use hosted app if you don't have GPT-4 or Anthropic access: https://autoevaluator.langchain.com/
+
 > Code for the hosted app is also open source: https://github.com/langchain-ai/auto-evaluator
 
 
